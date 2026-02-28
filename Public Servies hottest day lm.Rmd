@@ -1,0 +1,129 @@
+---
+  title: "SDSS Datathon 2026"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+library(lubridate)
+library(janitor)
+library(readxl)
+library(dplyr)
+library(stringr)
+```
+
+## Data + Fix/Cleaning
+
+```{r, echo = F}
+service <- read_excel("public_services_dataset.xlsx")
+
+# Cleaning
+service <- service %>%
+  clean_names()
+
+service <- service %>%
+  mutate(
+    occupancy_date = ymd(occupancy_date)
+  )
+
+service <- service %>%
+  mutate(
+    location_postal_code = as.factor(location_postal_code),
+    sector = as.factor(sector),
+    overnight_service_type = as.factor(overnight_service_type),
+    program_model = as.factor(program_model),
+    program_area = as.factor(program_area),
+    capacity_type = as.factor(capacity_type)
+  )
+
+service <- service %>%
+  mutate(
+    actual_capacity = as.numeric(actual_capacity),
+    occupied_capacity = as.numeric(occupied_capacity),
+    unavailable_capacity = as.numeric(unavailable_capacity),
+    occupancy_rate = as.numeric(occupancy_rate)
+  )
+
+service <- service %>%
+  mutate(
+    location_postal_code = str_replace_all(location_postal_code, " ", "")
+  )
+service <- service %>%
+  filter(str_length(location_postal_code) == 6)
+```
+
+## Model 1
+
+```{r}
+#june23_2025
+service_hot_2025 <- service %>%
+  filter(occupancy_date == as.Date("2025-06-23"))
+
+model1 <- lm(occupancy_rate ~ . - occupied_capacity - actual_capacity - unavailable_capacity , data = service_hot_2025)
+summary(model1)
+```
+
+## Plot for the model1 
+
+```{r}
+# predictor vs predictor
+df_used <- model1$model
+y_value <- resid(model1)
+
+# predictors only (drop response)
+pred <- df_used[, -1, drop = FALSE]
+
+# keep numeric predictors only
+pred_num <- pred[, sapply(pred, is.numeric), drop = FALSE]
+
+pairs(pred_num, main = "Predictor vs Predictor (numeric)")
+
+# residual vs fitted
+plot(fitted(model1), y_value,
+     main = "Residuals vs Fitted",
+     xlab = "Fitted",
+     ylab = "Residuals")
+
+# residual vs predictors
+# Identify numeric predictors only
+num_vars <- names(df_used)[sapply(df_used, is.numeric)]
+
+# Remove response variable (first column)
+num_vars <- num_vars[-1]
+
+# Loop through and plot
+for (var in num_vars) {
+  plot(df_used[[var]], y_value,
+       main = paste("Residual vs", var),
+       xlab = var,
+       ylab = "Residual")
+  abline(h = 0, col = "red")
+}
+
+cat_vars <- names(df_used)[sapply(df_used, is.factor)]
+
+for (var in cat_vars) {
+  boxplot(y_value ~ df_used[[var]],
+          main = paste("Residual vs", var),
+          xlab = var,
+          ylab = "Residual")
+}
+
+#qq-normal plot
+qqnorm(y_value)
+qqline(y_value)
+```
+
+## Predicted vs Actual
+
+```{r}
+predicted <- fitted(model1)
+actual <- model1$model[[1]]
+plot(predicted, actual,
+     main = "Predicted vs Actual",
+     xlab = "Predicted Values",
+     ylab = "Actual Values",
+     pch = 16, col = "steelblue")
+
+abline(0, 1, col = "red", lwd = 2)
+```
