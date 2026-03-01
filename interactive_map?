@@ -1,0 +1,272 @@
+<!-- 
+this is UN-FINISHED, some comments from AI
+  You can’t run your onehot_train.py sklearn pipeline inside a standalone HTML file (browsers don’t run Python/sklearn). What I can do in “HTML-only” is:
+  Make a single index.html that:
+  shows a GTA map
+  reverse-geocodes the clicked point → postal code
+  lets the user pick dropdown inputs
+  sends those inputs to a prediction API endpoint (which can be your existing Python backend)
+  Below is a single HTML file you can copy-paste into index.html and open.
+  It uses the exact feature names your training code uses:
+  LOCATION_POSTAL_CODE, SECTOR, OVERNIGHT_SERVICE_TYPE, PROGRAM_MODEL, PROGRAM_AREA, CAPACITY_TYPE, ACTUAL_CAPACITY, lat, lon, OCCUPANCY_DATE → dow/month/day
+
+  What you still need (1 sentence)
+  You need some backend endpoint at API_URL that runs your sklearn model and returns JSON { "pred_pressure" <number> } - because the browser can’t run onehot_train.py directly.
+                                                                                    there is a colon here  |
+-->
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>GTA Pressure Predictor</title>
+
+  <!-- Leaflet (map) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    html, body { height: 100%; margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+    .wrap { display: grid; grid-template-columns: 360px 1fr; height: 100%; }
+    .panel { padding: 14px; border-right: 1px solid #ddd; overflow: auto; }
+    #map { height: 100%; }
+    label { display:block; font-size:12px; margin-top:10px; color:#333; }
+    select, input { width: 100%; padding: 8px; margin-top: 4px; border: 1px solid #ccc; border-radius: 10px; }
+    .btn { margin-top: 12px; width: 100%; padding: 10px; border: 0; border-radius: 12px; background: #111; color:#fff; cursor:pointer; }
+    .btn:disabled { opacity: .55; cursor:not-allowed; }
+    .small { font-size:12px; color:#555; line-height:1.25; }
+    .box { margin-top: 12px; padding: 10px; border: 1px solid #ddd; border-radius: 12px; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace; }
+    .big { font-size: 20px; font-weight: 800; }
+    .row { display:flex; gap:10px; }
+    .row > div { flex:1; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="panel">
+    <h2 style="margin:0 0 6px;">GTA shelter pressure</h2>
+    <div class="small">
+      Click on the map → we get the local <b>postal code</b> → you choose predictors → we call your prediction API.
+      <br><br>
+      <b>API_URL</b> below should point to your backend route that returns JSON like:
+      <span class="mono">{ "pred_pressure": 0.1234 }</span>
+    </div>
+
+    <div class="box">
+      <div class="small">Clicked location</div>
+      <div class="mono" id="locLine">—</div>
+      <div class="small" style="margin-top:8px;">Postal code</div>
+      <div class="mono" id="pcLine">—</div>
+    </div>
+
+    <label>Date (OCCUPANCY_DATE)</label>
+    <input id="dateInput" type="date" />
+
+    <label>Actual capacity (ACTUAL_CAPACITY)</label>
+    <input id="capacityInput" type="number" min="0" step="1" value="50" />
+
+    <label>Sector (SECTOR)</label>
+    <select id="sectorSelect">
+      <option value="">—</option>
+      <option>Adult Men</option>
+      <option>Adult Women</option>
+      <option>Mixed Adult</option>
+      <option>Youth</option>
+      <option>Family</option>
+    </select>
+
+    <label>Overnight service type (OVERNIGHT_SERVICE_TYPE)</label>
+    <select id="ostSelect">
+      <option value="">—</option>
+      <option>Shelter</option>
+      <option>Motel/Hotel</option>
+      <option>24-Hours Respite</option>
+      <option>Warming Centre</option>
+      <option>Other</option>
+    </select>
+
+    <label>Program model (PROGRAM_MODEL)</label>
+    <select id="pmSelect">
+      <option value="">—</option>
+      <option>Emergency</option>
+      <option>Transitional</option>
+    </select>
+
+    <label>Program area (PROGRAM_AREA)</label>
+    <select id="paSelect">
+      <option value="">—</option>
+      <option>Base</option>
+      <option>Refugee Response</option>
+      <option>COVID-19 Response</option>
+      <option>Winter Response</option>
+      <option>Other</option>
+    </select>
+
+    <label>Capacity type (CAPACITY_TYPE)</label>
+    <select id="ctSelect">
+      <option value="">—</option>
+      <option>bed-based</option>
+      <option>room-based</option>
+    </select>
+
+    <button class="btn" id="predictBtn" disabled>Predict pressure</button>
+
+    <div class="box" id="predBox" style="display:none;">
+      <div class="small">Predicted pressure</div>
+      <div class="big" id="predValue">—</div>
+      <div class="small" id="predMeta"></div>
+    </div>
+
+    <div class="small" style="margin-top: 12px;">
+      Reverse geocoding uses OpenStreetMap Nominatim. Don’t spam requests.
+    </div>
+  </div>
+
+  <div id="map"></div>
+</div>
+
+<script>
+/**
+ * CHANGE THIS:
+ * Point this at your backend prediction endpoint.
+ *
+ * Example:
+ *   const API_URL = "http://127.0.0.1:8000/predict";
+ * Or a deployed endpoint:
+ *   const API_URL = "https://your-domain.com/predict";
+ */
+const API_URL = "http://127.0.0.1:8000/predict";
+
+function todayISO() {
+  const d = new Date();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${d.getFullYear()}-${m}-${day}`;
+}
+
+let marker = null;
+let clicked = { lat: null, lon: null, postal_code: null, display: null };
+
+function updateUI() {
+  document.getElementById("locLine").textContent =
+    (clicked.lat == null) ? "—" : `${clicked.lat.toFixed(6)}, ${clicked.lon.toFixed(6)}`;
+  document.getElementById("pcLine").textContent = clicked.postal_code || "—";
+  document.getElementById("predictBtn").disabled = !(clicked.lat && clicked.lon && clicked.postal_code);
+}
+
+async function reverseGeocode(lat, lon) {
+  // OpenStreetMap Nominatim
+  const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&zoom=18&addressdetails=1`;
+  const r = await fetch(url, { headers: { "Accept": "application/json" } });
+  if (!r.ok) throw new Error("Reverse geocode failed");
+  const j = await r.json();
+  const addr = j.address || {};
+  return {
+    postcode: addr.postcode || null,
+    display_name: j.display_name || ""
+  };
+}
+
+async function doPredict() {
+  const date = document.getElementById("dateInput").value;
+  const actual_capacity = Number(document.getElementById("capacityInput").value);
+
+  // Payload uses the same column names as your training script:
+  // LOCATION_POSTAL_CODE, SECTOR, OVERNIGHT_SERVICE_TYPE, PROGRAM_MODEL, PROGRAM_AREA, CAPACITY_TYPE,
+  // ACTUAL_CAPACITY, lat, lon, OCCUPANCY_DATE
+  const payload = {
+    LOCATION_POSTAL_CODE: clicked.postal_code,
+    SECTOR: document.getElementById("sectorSelect").value || null,
+    OVERNIGHT_SERVICE_TYPE: document.getElementById("ostSelect").value || null,
+    PROGRAM_MODEL: document.getElementById("pmSelect").value || null,
+    PROGRAM_AREA: document.getElementById("paSelect").value || null,
+    CAPACITY_TYPE: document.getElementById("ctSelect").value || null,
+    ACTUAL_CAPACITY: actual_capacity,
+    lat: clicked.lat,
+    lon: clicked.lon,
+    OCCUPANCY_DATE: date
+  };
+
+  const box = document.getElementById("predBox");
+  const pv = document.getElementById("predValue");
+  const meta = document.getElementById("predMeta");
+
+  box.style.display = "block";
+  pv.textContent = "…";
+  meta.textContent = "";
+
+  try {
+    const r = await fetch(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    if (!r.ok) {
+      const t = await r.text();
+      pv.textContent = "Error";
+      meta.textContent = t;
+      return;
+    }
+
+    const out = await r.json();
+    if (typeof out.pred_pressure !== "number") {
+      pv.textContent = "Error";
+      meta.textContent = "API response missing `pred_pressure` number.";
+      return;
+    }
+
+    pv.textContent = out.pred_pressure.toFixed(4);
+    meta.textContent = `Postal: ${clicked.postal_code}`;
+  } catch (e) {
+    pv.textContent = "Error";
+    meta.textContent = String(e);
+  }
+}
+
+(function init() {
+  // GTA view
+  const map = L.map('map').setView([43.6532, -79.3832], 10);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  document.getElementById("dateInput").value = todayISO();
+
+  map.on('click', async (e) => {
+    const { lat, lng } = e.latlng;
+    clicked.lat = lat;
+    clicked.lon = lng;
+    clicked.postal_code = null;
+    clicked.display = null;
+
+    if (marker) map.removeLayer(marker);
+    marker = L.marker([lat, lng]).addTo(map);
+
+    updateUI();
+    try {
+      const geo = await reverseGeocode(lat, lng);
+      clicked.postal_code = geo.postcode;
+      clicked.display = geo.display_name;
+      updateUI();
+
+      if (!geo.postcode) {
+        marker.bindPopup("No postal code found here. Click nearer to a road/building.").openPopup();
+      } else {
+        marker.bindPopup(`Postal code: <b>${geo.postcode}</b>`).openPopup();
+      }
+    } catch (err) {
+      marker.bindPopup("Reverse geocoding failed.").openPopup();
+      updateUI();
+    }
+  });
+
+  document.getElementById("predictBtn").addEventListener("click", doPredict);
+})();
+</script>
+</body>
+</html>
