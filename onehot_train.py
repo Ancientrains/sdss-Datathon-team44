@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from pathlib import Path
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
@@ -9,7 +10,8 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error
 import re
 from sklearn import __version__ as sklearn_version
 
-df = pd.read_csv("Public_services_pressure.csv")
+DATA_PATH = Path(__file__).resolve().parent / "Public_services_pressure.csv"
+df = pd.read_csv(DATA_PATH)
 
 # Target
 target = "PRESSURE_SCORE_GAUSSIAN"
