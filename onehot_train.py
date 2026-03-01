@@ -9,7 +9,7 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error
 import re
 from sklearn import __version__ as sklearn_version
 
-df = pd.read_csv("Public_services.csv")
+df = pd.read_csv("Public_services_pressure.csv")
 
 # Target
 target = "PRESSURE_SCORE_GAUSSIAN"
@@ -100,4 +100,5 @@ print(df[num_features + [target]].corr()[target].sort_values())
 
 print("MAE:", mae)
 print("RMSE:", rmse)
+
 
