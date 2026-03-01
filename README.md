@@ -16,7 +16,7 @@ The data file chosen for team 44 is Public_Service, from it we got famaliar with
 | A | Put it here |
 | B | Put it here |
 | C | Put it here |
-| D | Put it here |
+| Qijun Xie | Key Insights on System-Wide Shelter Capacity Pressure, Recommendations |
 
 
 ### Data visualiazation and cleaning
@@ -35,7 +35,6 @@ This analysis addresses the following five research questions:
 | Q4 | Which sectors are most operationally fragile? (Fragility Index) |
 | Q5 | What happens if demand increases or capacity is added? (Simulation) |
 
----
 ## Key Findings
 
 1. **The system has almost no buffer.** The average occupancy rate across all records is 97.2%,
