@@ -35,7 +35,8 @@ This analysis addresses the following five research questions:
 | Q4 | Which sectors are most operationally fragile? (Fragility Index) |
 | Q5 | What happens if demand increases or capacity is added? (Simulation) |
 
-##Key Findings
+---
+## Key Findings
 
 1. **The system has almost no buffer.** The average occupancy rate across all records is 97.2%,
    with 78% of all daily records at exactly 100% occupancy.
