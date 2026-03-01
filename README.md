@@ -26,7 +26,7 @@ We realized that the data given is a time serise thus we randomly seperated 10 d
 Since it's a valid probability, we first used a logit transformation to fit a linear model to see how the estimated parameters beheaves and get an basic understanding of how the data over all fitted. Due to the heaviely skewed tail to the left, the cluster of data near 1 and the large amount of catagorical predictors compared to continous ones, we failed to extract any usefull result other than we noticed  all the catagorical data are significant in some sense. some other visualizations we did was the modling comparison between shocks between 2024 jan to 2025 dec, accounting for geopolitical shock such as the introduction of tariffs, the election day, major holidays, and the hottest day/coldest day. < put image here >
 
 ### Key Insights on System-Wide Shelter Capacity Pressure
-My work covers five research questions:
+This analysis addresses the following five research questions:
 | # | Question |
 |---|---|
 | Q1 | Which sectors are most under pressure, and how consistently? |
@@ -35,7 +35,7 @@ My work covers five research questions:
 | Q4 | Which sectors are most operationally fragile? (Fragility Index) |
 | Q5 | What happens if demand increases or capacity is added? (Simulation) |
 
-With key findings:
+##Key Findings
 
 1. **The system has almost no buffer.** The average occupancy rate across all records is 97.2%,
    with 78% of all daily records at exactly 100% occupancy.
@@ -62,7 +62,6 @@ With key findings:
 | 2 | Implement real-time bed availability tracking system | Q3: Unavailable beds push effective occupancy above 100% |
 | 3 | Create transitional housing pathways for long-stay residents | Q5: High occupancy and low turnover leaves no room for new arrivals |
 | 4 | Expand support services for Youth mental health and 2SLGBTQI+ | Kerman et al. (2025): Youth sector has 2.63x higher self-injury rate; Canada PiT Count 2024: 25% of homeless youth identify as 2SLGBTQI+ |
-| 5 | Collect more granular data on reason for homelessness and length of stay | Current dataset lacks demographic detail needed for targeted interventions |
 
 
 
