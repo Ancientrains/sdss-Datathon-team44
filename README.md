@@ -13,9 +13,9 @@ The data file chosen for team 44 is Public_Service, from it we got famaliar with
 ## Team Contributions
 | Member | Role |
 |---|---|
-| A | Meihuan Shen |
-| B | Jackson Huang |
-| C | Gede Deanova Wikayana Fachrie  |
+| Meihuan Shen | Model Builder, Data visualization|
+| Jackson Huang | Model Builder, Data clean |
+| Gede Deanova Wikayana Fachrie | Key insights, Extrapolation  |
 | Qijun Xie | Key Insights, Recommendations |
 
 
